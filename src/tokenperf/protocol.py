@@ -1,7 +1,7 @@
 """Strict text-completion parsing. Transport errors never expose response bodies."""
 
 import json
-from time import monotonic
+from time import perf_counter
 
 import httpx
 
@@ -72,7 +72,7 @@ class Completion:
                 raise ProtocolError("content_after_finish")
             self.has_content = True
             if stream:
-                self.times.append(monotonic())
+                self.times.append(perf_counter())
         finish = choice.get("finish_reason")
         if finish is not None:
             if finish not in {"stop", "length"}:

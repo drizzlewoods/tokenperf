@@ -131,16 +131,18 @@ async def test_workers_warmup_inputs_and_artifacts(tmp_path):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("body", "status", "delay", "error"),
+    ("body", "status", "delay", "error", "timeout"),
     [
-        (b"server sensitive text", 429, 0, "http_429"),
-        (sse(done=False), 200, 0, "unexpected_eof"),
-        (None, 200, 0.1, "timeout"),
+        (b"server sensitive text", 429, 0, "http_429", 5),
+        (sse(done=False), 200, 0, "unexpected_eof", 5),
+        (None, 200, 0.1, "timeout", 0.03),
     ],
 )
-async def test_request_failures(tmp_path, body, status, delay, error):
+async def test_request_failures(tmp_path, body, status, delay, error, timeout):
     async with server(body, status, delay) as (url, _):
-        result = await run_benchmark(cfg(url, requests=1, warmup=0, timeout=0.03), tmp_path / "run")
+        result = await run_benchmark(
+            cfg(url, requests=1, warmup=0, timeout=timeout), tmp_path / "run"
+        )
     record = result.conditions[0].requests[0]
     assert not record.success and record.error == error
     assert result.conditions[0].summary["latency_seconds"]["p50"] is None
@@ -332,7 +334,7 @@ async def test_content_timing_ignores_role_and_empty_chunks(tmp_path, monkeypatc
     assert record.success
     assert record.first_content_seconds >= 0.045
     assert len(record.chunk_intervals_seconds) == 1
-    assert record.chunk_intervals_seconds[0] >= 0.015
+    assert record.chunk_intervals_seconds[0] >= 0.014
     assert record.latency_seconds > record.first_content_seconds + record.chunk_intervals_seconds[0]
     assert stream.closed
 

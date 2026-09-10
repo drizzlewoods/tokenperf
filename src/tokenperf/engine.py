@@ -4,7 +4,7 @@ import asyncio
 import os
 from datetime import UTC, datetime
 from pathlib import Path
-from time import monotonic
+from time import perf_counter
 from uuid import uuid4
 
 import httpx
@@ -46,7 +46,7 @@ async def run_benchmark(
     async def perform(
         client: httpx.AsyncClient, index: int, warmup: bool, queued: float
     ) -> RequestRecord:
-        started = monotonic()
+        started = perf_counter()
         item = index % len(inputs)
         record = RequestRecord(
             request_id=index,
@@ -90,15 +90,20 @@ async def run_benchmark(
         except (ValueError, TypeError, UnicodeError):
             record.error = "invalid_request_or_response"
         finally:
-            record.latency_seconds = monotonic() - started
-            if record.success and completion.rate_safe and completion.tokens is not None:
+            record.latency_seconds = perf_counter() - started
+            if (
+                record.success
+                and completion.rate_safe
+                and completion.tokens is not None
+                and record.latency_seconds > 0
+            ):
                 record.output_tokens_per_second = completion.tokens / record.latency_seconds
         return record
 
     async def phase(
         client: httpx.AsyncClient, condition: ConditionResult, count: int, warmup: bool
     ) -> None:
-        queued = monotonic()
+        queued = perf_counter()
         indices = iter(range(count))
 
         async def worker() -> None:
@@ -129,9 +134,9 @@ async def run_benchmark(
                 result.conditions.append(active)
                 measured_start = None
                 await phase(client, active, config.warmup, True)
-                measured_start = monotonic()
+                measured_start = perf_counter()
                 await phase(client, active, config.requests, False)
-                active.summary = summarize(active.requests, monotonic() - measured_start)
+                active.summary = summarize(active.requests, perf_counter() - measured_start)
                 measured_start = None
     except asyncio.CancelledError:
         result.status = "cancelled"
@@ -142,7 +147,7 @@ async def run_benchmark(
     finally:
         if active is not None and not active.summary:
             active.summary = summarize(
-                active.requests, monotonic() - measured_start if measured_start is not None else 0
+                active.requests, perf_counter() - measured_start if measured_start is not None else 0
             )
         writer.finish(result)
     return result
