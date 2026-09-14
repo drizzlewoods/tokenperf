@@ -146,8 +146,7 @@ async def run_benchmark(
         raise
     finally:
         if active is not None and not active.summary:
-            active.summary = summarize(
-                active.requests, perf_counter() - measured_start if measured_start is not None else 0
-            )
+            elapsed = perf_counter() - measured_start if measured_start is not None else 0
+            active.summary = summarize(active.requests, elapsed)
         writer.finish(result)
     return result

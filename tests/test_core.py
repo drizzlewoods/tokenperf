@@ -131,17 +131,17 @@ async def test_workers_warmup_inputs_and_artifacts(tmp_path):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ("body", "status", "delay", "error", "timeout"),
+    ("body", "status", "delay", "error", "timeout_s"),
     [
         (b"server sensitive text", 429, 0, "http_429", 5),
         (sse(done=False), 200, 0, "unexpected_eof", 5),
         (None, 200, 0.1, "timeout", 0.03),
     ],
 )
-async def test_request_failures(tmp_path, body, status, delay, error, timeout):
+async def test_request_failures(tmp_path, body, status, delay, error, timeout_s):
     async with server(body, status, delay) as (url, _):
         result = await run_benchmark(
-            cfg(url, requests=1, warmup=0, timeout=timeout), tmp_path / "run"
+            cfg(url, requests=1, warmup=0, timeout=timeout_s), tmp_path / "run"
         )
     record = result.conditions[0].requests[0]
     assert not record.success and record.error == error
