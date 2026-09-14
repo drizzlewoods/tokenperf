@@ -344,7 +344,7 @@ async def test_total_timeout_despite_continuous_body(tmp_path, monkeypatch):
     stream = TimedStream([event({"content": "x"})] * 100, 0.01)
     mock_client(monkeypatch, lambda request: httpx.Response(200, stream=stream))
     result = await run_benchmark(
-        cfg("http://mock/v1", requests=1, warmup=0, timeout=0.04), tmp_path / "run"
+        cfg("http://mock/v1", requests=1, warmup=0, timeout=0.06), tmp_path / "run"
     )
     record = result.conditions[0].requests[0]
     assert record.error == "timeout" and not record.success
