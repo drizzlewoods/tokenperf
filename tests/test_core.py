@@ -71,7 +71,6 @@ async def server(body=None, status=200, delay=0):
         finally:
             stats["active"] -= 1
             writer.close()
-            await writer.wait_closed()
             tasks.discard(task)
 
     listener = await asyncio.start_server(handle, "127.0.0.1", 0)
@@ -80,10 +79,10 @@ async def server(body=None, status=200, delay=0):
         yield f"http://127.0.0.1:{port}/v1", stats
     finally:
         listener.close()
-        await listener.wait_closed()
         for task in list(tasks):
             task.cancel()
-        await asyncio.gather(*tasks, return_exceptions=True)
+        await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), 5)
+        await asyncio.wait_for(listener.wait_closed(), 5)
 
 
 def cfg(endpoint, **kwargs):
