@@ -1,0 +1,13 @@
+{
+  "endpoint": "http://localhost:8000/v1",
+  "model": "your-model",
+  "api_key_env": null,
+  "messages": [{"role": "user", "content": "Explain what a hash table is in three sentences."}],
+  "generation": {"max_tokens": 128, "temperature": 0},
+  "stream": true,
+  "requests": 10,
+  "concurrency": [1, 2, 4],
+  "warmup": 1,
+  "timeout": 120,
+  "seed": 0
+}

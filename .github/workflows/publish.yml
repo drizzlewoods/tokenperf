@@ -1,0 +1,75 @@
+name: Publish
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: '3.11'
+      - run: uv sync --locked
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run pytest
+      - run: uv build
+      - run: uv run twine check dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: distributions
+          path: dist/
+  testpypi:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: testpypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: distributions
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+  verify-testpypi:
+    needs: testpypi
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install exact release from TestPyPI in a fresh environment
+        shell: bash
+        run: |
+          python -m venv /tmp/tokenperf-release
+          python -c 'import tomllib; from pathlib import Path; p=tomllib.loads(Path("pyproject.toml").read_text())["project"]; Path("/tmp/deps.txt").write_text("\n".join(p["dependencies"])); Path("/tmp/version.txt").write_text(p["version"])'
+          /tmp/tokenperf-release/bin/pip install -r /tmp/deps.txt
+          version=$(cat /tmp/version.txt)
+          for attempt in 1 2 3 4 5; do
+            if /tmp/tokenperf-release/bin/pip install --no-deps --index-url https://test.pypi.org/simple/ "tokenperf==$version"; then
+              break
+            fi
+            if [ "$attempt" = 5 ]; then exit 1; fi
+            sleep 15
+          done
+          cd /tmp
+          /tmp/tokenperf-release/bin/python -c 'from tokenperf import BenchmarkConfig, BenchmarkResult, run_benchmark'
+          /tmp/tokenperf-release/bin/tokenperf --help
+          /tmp/tokenperf-release/bin/tokenperf --version
+  pypi:
+    needs: verify-testpypi
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: distributions
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
