@@ -1,0 +1,12 @@
+{
+  "endpoint": "https://ark.cn-beijing.volces.com/api/coding/v3",
+  "model": "deepseek-v4-flash",
+  "api_key_env": "MODEL_API_KEY",
+  "messages": [{"role": "user", "content": "Reply with the single word hello."}],
+  "generation": {"max_tokens": 32},
+  "requests": 1,
+  "warmup": 0,
+  "concurrency": 1,
+  "stream": true,
+  "timeout": 120
+}

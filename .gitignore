@@ -216,3 +216,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Benchmark artifacts may contain endpoint metadata.
+tokenperf-results/
